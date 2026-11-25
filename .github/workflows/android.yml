@@ -1,0 +1,59 @@
+
+name: Build Vila Heroes Android APK
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar componentes Android
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.10.2.4988404"
+
+      - name: Configurar Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.4.1
+          use-dotnet: false
+          include-templates: true
+
+      - name: Extrair projeto
+        run: |
+          unzip -q VilaHeroes-Android-Projeto.zip -d extracted
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/extracted/VilaHeroes" >> $GITHUB_ENV
+
+      - name: Importar projeto
+        run: |
+          godot --headless --editor --path "$PROJECT_DIR" --quit
+
+      - name: Criar APK
+        run: |
+          cd "$PROJECT_DIR"
+          mkdir -p build
+          godot --headless --path . --export-debug Android build/VilaHeroes.apk
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vila-Heroes-Android-APK
+          path: extracted/VilaHeroes/build/VilaHeroes.apk
+          if-no-files-found: error
